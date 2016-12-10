@@ -1,14 +1,27 @@
 
-import sys
 from pyspark import SparkContext
-from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
+from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel
+from collections import namedtuple
+
+
+class Rating(namedtuple("Rating", ["user", "product", "rating"])):
+    """Takes a string userID, string productID, and int rating, and returns Rating obj
+    like the Rating obj in pyspark.mllib.recommendation, with userID and productID stored as strings not ints"""
+
+    def __init__(self, user, product, rating):
+        self.user = user
+        self.product = product
+        self.rating = rating
+
+    def __reduce__(self):
+        return Rating, (str(self.user), str(self.product), float(self.rating))
 
 # Load and parse the data
 
 sc = SparkContext("local", "Recommendation")
-data_file = sc.TextFile("ratings-small.txt") # do we need to parallelize this?-- No, Spark does it automatically
+data_file = sc.textFile("file:///home/hadoop02/ratings-small-no-hapaxes.txt")
 ratings = data_file.map(lambda l: l.split(','))\
-    .map(lambda l: Rating(int(l[0]), int(l[1]), float(l[2])))
+    .map(lambda l: Rating(str(l[0]), str(l[1]), float(l[2])))
 
 # Build the recommendation model using Alternating Least Squares
 rank = 10
