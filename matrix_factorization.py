@@ -88,5 +88,5 @@ for item in item_file:
                 #now reset to the right lowest similarity
                 lowest_similarity = temp_similarity
 
-    print(recommended_products)
+    print recommended_products
     recommended_products = [(None, 0) * 10]
