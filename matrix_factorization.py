@@ -37,7 +37,7 @@ for feature_element in features_matrix:
 item_file = sc.TextFile("items.txt").read()
 item_file = item_file.splitlines()
 
-# create list where first element is similarity, second is item identifier
+# create list where first element is item id, second is similarity
 recommended_products = [(None, 0) * 10]
 lowest_similarity = 0
 
@@ -67,11 +67,16 @@ for item in item_file:
             current_sum = sum([i * j for (i, j) in zip(current_feature_vector, compare_to_vector)])
 
             if current_sum > lowest_similarity:
+
+                # first element in tuple is item id, second is similarity
                 recommended_products.append((feature[0], current_sum))
 
                 for element in recommended_products:
 
-                    if element[1] < feature[0]:
+                    # isn't this comparing similarity to an item id?
+                    # if element[1] < feature[0]:
+
+                    if element[1] < current_sum:
                         ##get the lowest value
                         temp_similarity = element[1]
 
