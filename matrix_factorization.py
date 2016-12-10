@@ -6,7 +6,7 @@ from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
 # Load and parse the data
 
 sc = SparkContext("local", "Recommendation")
-data_file = sc.TextFile("ratings-small.txt")
+data_file = sc.TextFile("ratings-small.txt") # do we need to parallelize this?-- No, Spark does it automatically
 ratings = data_file.map(lambda l: l.split(','))\
     .map(lambda l: Rating(int(l[0]), int(l[1]), float(l[2])))
 
@@ -37,30 +37,44 @@ for feature_element in features_matrix:
 item_file = sc.TextFile("items.txt").read()
 item_file = item_file.splitlines()
 
+# create list where first element is similarity, second is item identifier
 recommended_products = [(None, 0) * 10]
 lowest_similarity = 0
 
-for item in item_file:
-    if features_dict.get(item) == None:
-        continue
-    current_feature_vector = features_dict.get(item)
-    for feature in features_matrix:
-        if item != feature[0]:
-            compare_to_vector = feature[1]
-            result_array = []
-            for index in range(len(compare_to_vector)):
-                result_array[index] = compare_to_vector[index] * current_feature_vector[index]
-            sum = 0
-            for value in result_array:
-                sum = sum + value
+# we're assuming that the elements in the features matrix are
+# indexed under a name in the same format as how they're written in the items.txt file
 
-            if sum > lowest_similarity:
-                recommended_products.append((sum, feature[0]))
+for item in item_file:
+
+    if features_dict.get(item) is None:
+        continue
+
+    current_feature_vector = features_dict.get(item)
+
+    for feature in features_matrix:
+
+        if item != feature[0]:
+
+            compare_to_vector = feature[1]
+
+            # result_array = []
+            # for index in range(len(compare_to_vector)):
+            #    result_array[index] = compare_to_vector[index] * current_feature_vector[index]
+            # sum = 0
+            # for value in result_array:
+            #     sum = sum + value
+
+            current_sum = sum([i * j for (i, j) in zip(current_feature_vector, compare_to_vector)])
+
+            if current_sum > lowest_similarity:
+                recommended_products.append((feature[0], current_sum))
 
                 for element in recommended_products:
+
                     if element[1] < feature[0]:
                         ##get the lowest value
                         temp_similarity = element[1]
+
                     if element[1] == lowest_similarity:
                         #find my last lowest similarity and remove it
                         recommended_products.remove(element)
