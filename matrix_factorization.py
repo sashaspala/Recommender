@@ -102,6 +102,4 @@ for item in item_file:
                 #now reset to the right lowest similarity
                 lowest_similarity = temp_similarity
 
-    for element in recommended_products:
-
     recommended_products = [(None, 0) * 10]
