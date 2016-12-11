@@ -1,7 +1,6 @@
 
 from pyspark import SparkContext
 from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
-from collections import namedtuple
 import pickle
 '''
 class Rating(namedtuple("Rating", ["user", "product", "rating"])):
