@@ -19,9 +19,10 @@ class Rating(namedtuple("Rating", ["user", "product", "rating"])):
 '''
 
 sc = SparkContext("local", "Recommendation")
-data_file = sc.textFile("file:///home/hadoop02/ratings-small-no-hapaxes.txt")
+data_file = sc.textFile("file:///home/hadoop02/ratings-small-hashes.txt")
 ratings = data_file.map(lambda l: l.split(','))\
-    .map(lambda l: Rating(int(str(l[0]),36), int(str(l[1]), 36), float(l[2])))
+   .map(lambda l: Rating(int(l[0]), int(l[1]), float(l[2])))
+
 
 # Build the recommendation model using Alternating Least Squares
 rank = 10
@@ -44,10 +45,10 @@ features_matrix = model.productFeatures().toLocalIterator()
 features_dict = {}
 
 ### put into dictionary for quicker retrieval
-for feature_element in features_matrix:
+for feature_element in features_matrix.toLocalIterator():
     features_dict[feature_element[0]] = feature_element[1]
 
-item_file = sc.TextFile("items.txt").read()
+item_file = open("items.txt").read()
 item_file = item_file.splitlines()
 
 # create list where first element is item id, second is similarity
