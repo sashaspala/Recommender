@@ -58,7 +58,13 @@ lowest_similarity = 0
 # we're assuming that the elements in the features matrix are
 # indexed under a name in the same format as how they're written in the items.txt file
 
-for item in item_file:
+items_dict = {}
+for line in item_file:
+    item_ids = line.split(',')
+    item = item_ids[0]
+    original_id = item_ids[1]
+
+    items_dict[item] = original_id
 
     if features_dict.get(item) is None:
         continue
@@ -101,5 +107,8 @@ for item in item_file:
 
                 #now reset to the right lowest similarity
                 lowest_similarity = temp_similarity
+
+    for hashed_id in recommended_products:
+        print(items_dict[hashed_id])
 
     recommended_products = [(None, 0) * 10]
