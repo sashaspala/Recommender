@@ -2,8 +2,8 @@
 from pyspark import SparkContext
 from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel
 from collections import namedtuple
-
-
+import pickle
+'''
 class Rating(namedtuple("Rating", ["user", "product", "rating"])):
     """Takes a string userID, string productID, and int rating, and returns Rating obj
     like the Rating obj in pyspark.mllib.recommendation, with userID and productID stored as strings not ints"""
@@ -15,13 +15,13 @@ class Rating(namedtuple("Rating", ["user", "product", "rating"])):
 
     def __reduce__(self):
         return Rating, (str(self.user), str(self.product), float(self.rating))
-
 # Load and parse the data
+'''
 
 sc = SparkContext("local", "Recommendation")
 data_file = sc.textFile("file:///home/hadoop02/ratings-small-no-hapaxes.txt")
 ratings = data_file.map(lambda l: l.split(','))\
-    .map(lambda l: Rating(str(l[0]), str(l[1]), float(l[2])))
+    .map(lambda l: Rating(binascii.b2a_hex(pickle.dump(str(l[0]))), binascii.b2a_hex(pickle.dump(str(l[1]))), float(l[2])))
 
 # Build the recommendation model using Alternating Least Squares
 rank = 10
@@ -101,5 +101,5 @@ for item in item_file:
                 #now reset to the right lowest similarity
                 lowest_similarity = temp_similarity
 
-    print recommended_products
+    print(pickle.load(recommended_products))
     recommended_products = [(None, 0) * 10]
