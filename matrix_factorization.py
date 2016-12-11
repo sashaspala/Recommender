@@ -101,5 +101,5 @@ for item in item_file:
                 #now reset to the right lowest similarity
                 lowest_similarity = temp_similarity
 
-    print(pickle.load(recommended_products))
+    print(pickle.loads(recommended_products))
     recommended_products = [(None, 0) * 10]
