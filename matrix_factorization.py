@@ -1,8 +1,8 @@
 
 from pyspark import SparkContext
-from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel
-from collections import namedtuple
+from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
 import pickle
+import binascii
 '''
 class Rating(namedtuple("Rating", ["user", "product", "rating"])):
     """Takes a string userID, string productID, and int rating, and returns Rating obj
