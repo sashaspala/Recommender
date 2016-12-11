@@ -21,7 +21,7 @@ class Rating(namedtuple("Rating", ["user", "product", "rating"])):
 sc = SparkContext("local", "Recommendation")
 data_file = sc.textFile("file:///home/hadoop02/ratings-small-no-hapaxes.txt")
 ratings = data_file.map(lambda l: l.split(','))\
-    .map(lambda l: Rating(float(str(l[0]),36), float(str(l[1]), 36), float(l[2])))
+    .map(lambda l: Rating(int(str(l[0]),36), int(str(l[1]), 36), float(l[2])))
 
 # Build the recommendation model using Alternating Least Squares
 rank = 10
@@ -40,7 +40,7 @@ model = ALS.train(ratings, rank, numIterations)
 # model.save(data_file, "target/tmp/myCollaborativeFilter")
 # sameModel = MatrixFactorizationModel.load(data_file, "target/tmp/myCollaborativeFilter")
 
-features_matrix = model.productFeatures()
+features_matrix = model.productFeatures().toLocalIterator()
 features_dict = {}
 
 ### put into dictionary for quicker retrieval
@@ -101,5 +101,6 @@ for item in item_file:
                 #now reset to the right lowest similarity
                 lowest_similarity = temp_similarity
 
-    print(pickle.loads(recommended_products))
+    for element in recommended_products:
+
     recommended_products = [(None, 0) * 10]
