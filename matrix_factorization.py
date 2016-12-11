@@ -21,7 +21,7 @@ class Rating(namedtuple("Rating", ["user", "product", "rating"])):
 sc = SparkContext("local", "Recommendation")
 data_file = sc.textFile("file:///home/hadoop02/ratings-small-no-hapaxes.txt")
 ratings = data_file.map(lambda l: l.split(','))\
-    .map(lambda l: Rating(binascii.b2a_hex(pickle.dumps(str(l[0]))), binascii.b2a_hex(pickle.dumps(str(l[1]))), float(l[2]), 2))
+    .map(lambda l: Rating(binascii.b2a_hex(pickle.dumps(str(l[0]))), binascii.b2a_hex(pickle.dumps(str(l[1]))), float(l[2])))
 
 # Build the recommendation model using Alternating Least Squares
 rank = 10
