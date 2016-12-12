@@ -4,16 +4,12 @@ from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
 
 sc = SparkContext("local", "Recommendation")
 data_file = sc.textFile("file:///home/hadoop02/ratings-small-hashes.txt")
-ratings = data_file.map(lambda l: l.split(','))\
-   .map(lambda l: Rating(int(l[0]), int(l[1]), float(l[2])))
-
+ratings = data_file.map(lambda l: l.split(',')).map(lambda l: Rating(int(l[0]), int(l[1]), float(l[2])))
 
 # Build the recommendation model using Alternating Least Squares
-rank = 10
-numIterations = 10
+rank = 3
+numIterations = 1
 model = ALS.train(ratings, rank, numIterations)
-
-print(model)
 
 features_matrix = model.productFeatures()
 features_dict = {}
@@ -47,6 +43,7 @@ lowest_similarity = 0
 
 
 for item in amazon_items:
+
     hashed_item = amazon_to_hash[item]
 
     if features_dict.get(hashed_item) is None:
