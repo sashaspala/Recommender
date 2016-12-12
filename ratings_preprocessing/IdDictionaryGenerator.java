@@ -8,16 +8,20 @@ import java.util.HashSet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
-public class RatingsPreprocessor {
+import preprocessing.RatingsPreprocessor.RatingsPreprocessorReducer;
+
+public class IdDictionaryGenerator {
 	private final static int LINES_PER_REVIEW = 11;		//If only MultiLineInputFormat split on multiples of this.
 	private final static int REVIEWS_PER_BLOCK = 60000;	//Instead, we do this so we don't get 400,000,000 mappers.
 	private final static int BLOCKS_PER_SPLIT = 3;		//This gives us a reasonable 3x64mb chunk per mapper.
@@ -26,74 +30,72 @@ public class RatingsPreprocessor {
 	
 	/**
 	 * Input:	offset				reviews
-	 * Output:	hash(productId)		hash(userId),score
+	 * Output:	productId			1
 	 */
-	public static class RatingsPreprocessorMapper extends Mapper<LongWritable, Text, Text, Text> {
-		String keyTerm;
-		ArrayDeque<String> valueTerms = new ArrayDeque<String>();
+	public static class IdDictMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+		ArrayDeque<String> valTerms = new ArrayDeque<String>();
 		
 		@Override
-		protected void setup(Mapper<LongWritable, Text, Text, Text>.Context context)
+		protected void setup(Mapper<LongWritable, Text, Text, IntWritable>.Context context)
 				throws IOException, InterruptedException {			
 			
 			super.setup(context);
 			
-			keyTerm = "product/productId: ";
-			valueTerms.add("review/userId: ");	//add terms in the order you want them in the output
-			valueTerms.add("review/score: ");	//if you want the review text, change the split(regex) below
+			valTerms.add("product/productId: ");
+//			valTerms.add("review/userId: ");	
 		}
 
 		@Override
 		public void map(LongWritable offset, Text text, Context context) throws IOException, InterruptedException {
+			IntWritable one = new IntWritable(1);
 			ArrayDeque<String> reviews = new ArrayDeque<String>();
 			Collections.addAll(reviews, text.toString().split("review/text: .*\n\n"));	
 			
-			for(String review : reviews){				
+			for(String review : reviews){	
 				if(review.contains("review/userId: unknown"))	//skip
 					continue;
 				
-				int keyStart = review.indexOf(keyTerm) + keyTerm.length();
-				int keyEnd = review.indexOf("\n", keyStart);
-				String key = String.valueOf(review.substring(keyStart, keyEnd).hashCode());	//numbers only!
-				
-				StringBuilder values = new StringBuilder();
-				boolean needComma = false;
-				
-				for(String valueTerm : valueTerms){
-					if(needComma)
-						values.append(",");
-					
-					int vtStart = review.indexOf(valueTerm) + valueTerm.length();
-					int vtEnd = review.indexOf("\n", vtStart);
-					String value = review.substring(vtStart, vtEnd);
-					if(valueTerm.equals("review/userId: "))	value = String.valueOf(value.hashCode());	//we need ints
-					values.append(value);
-					needComma = true;
-				}
-				
-				context.write(new Text(key), new Text(values.toString()));
-				
+				for(String valTerm : valTerms){
+					int vStart = review.indexOf(valTerm) + valTerm.length();
+					int vEnd = review.indexOf("\n", vStart);
+					String val = review.substring(vStart, vEnd);
+					context.write(new Text(val), one);
+				}				
 			}
 		}
 	}
 	
 	/**
-	 * Input:	hash(productId)		hash(userId),score
-	 * Output:	Null				hash(productId),hash(userId),score
+	 * Input:	productId			[1,1,...,1]
+	 * Output:	productId			sum
 	 */
-	public static class RatingsPreprocessorReducer extends Reducer<Text, Text, NullWritable, Text>{		
+	public static class IdDictCombiner extends Reducer<Text, IntWritable, Text, IntWritable>{		
 		@Override
-		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException{
-			HashSet<String> allValues = new HashSet<String>();
+		public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+			int sum = 0;
+			for(IntWritable val : values){
+				sum += val.get();
+			}
+			context.write(key, new IntWritable(sum));			
+		}
+	}
+	
+	/**
+	 * Input:	productId			sums
+	 * Output:	Null				hash(productId),productId
+	 */
+	public static class IdDictReducer extends Reducer<Text, IntWritable, NullWritable, Text>{		
+		@Override
+		public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+			int count = 0;
 			NullWritable nothing = NullWritable.get();
 			
-			for(Text value : values){
-				allValues.add(value.toString());
+			for(IntWritable value : values){
+				count += value.get();
 			}
 			
-			if(allValues.size() >= MIN_REVIEWS){
-				for(String value : allValues)
-					context.write(nothing, new Text(key.toString() + "," + value));
+			if(count >= MIN_REVIEWS){
+				context.write(nothing, new Text(String.valueOf(key.toString().hashCode()) + "," + key));
 			}				
 		}
 	}
@@ -104,16 +106,17 @@ public class RatingsPreprocessor {
 		
 		GenericOptionsParser gop = new GenericOptionsParser(conf, args);
 		String[] otherArgs = gop.getRemainingArgs();
-		Job job = Job.getInstance(conf, "ratings preprocessing");
+		Job job = Job.getInstance(conf, "id dictionary generator");
 		
 		job.setJarByClass(RatingsPreprocessor.class);
-		job.setMapperClass(RatingsPreprocessorMapper.class);
+		job.setMapperClass(IdDictMapper.class);
 		job.setMapOutputKeyClass(Text.class);
-		job.setMapOutputValueClass(Text.class);
+		job.setMapOutputValueClass(IntWritable.class);
 		job.setInputFormatClass(MultiLineInputFormat.class);
 		MultiLineInputFormat.setInputPaths(job, new Path(otherArgs[0]));
 		MultiLineInputFormat.setNumLinesPerSplit(job, LINES_PER_SPLIT);	
-		job.setReducerClass(RatingsPreprocessorReducer.class);
+		job.setCombinerClass(IdDictCombiner.class);
+		job.setReducerClass(IdDictReducer.class);
 		job.setOutputKeyClass(NullWritable.class);
 		job.setOutputValueClass(Text.class);
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
