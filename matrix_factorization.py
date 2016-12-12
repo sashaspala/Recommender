@@ -57,17 +57,23 @@ lowest_similarity = 0
 
 # we're assuming that the elements in the features matrix are
 # indexed under a name in the same format as how they're written in the items.txt file
-
 items_dict = {}
+og_products_file = open("id_dict-small.txt").read().splitlines()
+for line in og_products_file:
+    hash = line[0]
+    item_id = line[1]
+    items_dict[hash] = item_id
+
 for line in item_file:
     item_ids = line.split(',')
     item = item_ids[0]
     original_id = item_ids[1]
 
-    items_dict[item] = original_id
-
     if features_dict.get(item) is None:
         continue
+
+    if items_dict.get(item) is None:
+        items_dict[item] = original_id
 
     current_feature_vector = features_dict.get(item)
 
