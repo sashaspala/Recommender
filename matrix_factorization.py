@@ -1,8 +1,8 @@
 
 from pyspark import SparkContext
 from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
-import marshal
-import binascii
+from setuptools import setup
+
 '''
 class Rating(namedtuple("Rating", ["user", "product", "rating"])):
     """Takes a string userID, string productID, and int rating, and returns Rating obj
@@ -41,7 +41,7 @@ model = ALS.train(ratings, rank, numIterations)
 # model.save(data_file, "target/tmp/myCollaborativeFilter")
 # sameModel = MatrixFactorizationModel.load(data_file, "target/tmp/myCollaborativeFilter")
 
-features_matrix = model.productFeatures().toLocalIterator()
+features_matrix = model.productFeatures()
 features_dict = {}
 
 ### put into dictionary for quicker retrieval
