@@ -13,6 +13,8 @@ rank = 10
 numIterations = 10
 model = ALS.train(ratings, rank, numIterations)
 
+print(model)
+
 features_matrix = model.productFeatures()
 features_dict = {}
 
@@ -27,7 +29,7 @@ hash_to_amazon = {}
 # 2nd dict is key amazon id, value hashed id
 amazon_to_hash = {}
 
-id_file = open("id_dict-medium.txt").read()
+id_file = open("id_dict-small.txt").read()
 id_file = id_file.splitlines()
 for line in id_file:
     ids = line.split(',')
