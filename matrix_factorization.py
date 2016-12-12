@@ -48,7 +48,7 @@ features_dict = {}
 for feature_element in features_matrix.toLocalIterator():
     features_dict[feature_element[0]] = feature_element[1]
 
-item_file = open("items.txt").read()
+item_file = open("id_dict-medium.txt").read()
 item_file = item_file.splitlines()
 
 # create list where first element is item id, second is similarity
