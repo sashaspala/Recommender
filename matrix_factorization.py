@@ -1,7 +1,7 @@
 
 from pyspark import SparkContext
 from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
-from setuptools import setup
+# from setuptools import setup
 
 '''
 class Rating(namedtuple("Rating", ["user", "product", "rating"])):
@@ -44,7 +44,7 @@ model = ALS.train(ratings, rank, numIterations)
 features_matrix = model.productFeatures()
 features_dict = {}
 
-### put into dictionary for quicker retrieval
+# put into dictionary for quicker retrieval
 for feature_element in features_matrix.toLocalIterator():
     features_dict[feature_element[0]] = feature_element[1]
 
@@ -54,9 +54,6 @@ item_file = item_file.splitlines()
 # create list where first element is item id, second is similarity
 recommended_products = [(None, 0) * 10]
 lowest_similarity = 0
-
-# we're assuming that the elements in the features matrix are
-# indexed under a name in the same format as how they're written in the items.txt file
 
 items_dict = {}
 for line in item_file:
