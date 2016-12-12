@@ -1,22 +1,6 @@
 
 from pyspark import SparkContext
 from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
-# from setuptools import setup
-
-'''
-class Rating(namedtuple("Rating", ["user", "product", "rating"])):
-    """Takes a string userID, string productID, and int rating, and returns Rating obj
-    like the Rating obj in pyspark.mllib.recommendation, with userID and productID stored as strings not ints"""
-
-    def __init__(self, user, product, rating):
-        self.user = user
-        self.product = product
-        self.rating = rating
-
-    def __reduce__(self):
-        return Rating, (str(self.user), str(self.product), float(self.rating))
-# Load and parse the data
-'''
 
 sc = SparkContext("local", "Recommendation")
 data_file = sc.textFile("file:///home/hadoop02/ratings-small-hashes.txt")
@@ -29,39 +13,39 @@ rank = 10
 numIterations = 10
 model = ALS.train(ratings, rank, numIterations)
 
-# I don't think the two following two blocks of code are necessary
-# Evaluate the model on training data
-# testdata = ratings.map(lambda p: (p[0], p[1]))
-# predictions = model.predictAll(testdata).map(lambda r: ((r[0], r[1]), r[2]))
-# ratesAndPreds = ratings.map(lambda r: ((r[0], r[1]), r[2])).join(predictions)
-# MSE = ratesAndPreds.map(lambda r: (r[1][0] - r[1][1])**2).mean()
-# print("Mean Squared Error = " + str(MSE))
-
-# Save and load model
-# model.save(data_file, "target/tmp/myCollaborativeFilter")
-# sameModel = MatrixFactorizationModel.load(data_file, "target/tmp/myCollaborativeFilter")
-
 features_matrix = model.productFeatures()
 features_dict = {}
 
-# put into dictionary for quicker retrieval
+# create dictionary where key is hashed item id, value is feature vector
 for feature_element in features_matrix.toLocalIterator():
     features_dict[feature_element[0]] = feature_element[1]
 
-item_file = open("id_dict-medium.txt").read()
+# create dictionary of hashed item id, Amazon item id pairs
+id_dict = {}
+id_file = open("id_dict-medium.txt").read()
+id_file = id_file.splitlines()
+for line in id_file:
+    ids = line.split(',')
+    id_dict[ids[0]]=ids[1]
+
+# read in Amazon ids to find most similar items of
+item_file = open("items.txt").read()
 item_file = item_file.splitlines()
 
-# create list where first element is item id, second is similarity
+
+# create list where first element is hashed item id, second is similarity
 recommended_products = [(None, 0) * 10]
 lowest_similarity = 0
 
-items_dict = {}
+
 for line in item_file:
     item_ids = line.split(',')
+
+
     item = item_ids[0]
     original_id = item_ids[1]
 
-    items_dict[item] = original_id
+    id_dict[item] = original_id
 
     if features_dict.get(item) is None:
         continue
@@ -73,13 +57,6 @@ for line in item_file:
         if item != feature[0]:
 
             compare_to_vector = feature[1]
-
-            # result_array = []
-            # for index in range(len(compare_to_vector)):
-            #    result_array[index] = compare_to_vector[index] * current_feature_vector[index]
-            # sum = 0
-            # for value in result_array:
-            #     sum = sum + value
 
             current_sum = sum([i * j for (i, j) in zip(current_feature_vector, compare_to_vector)])
 
