@@ -1,57 +1,44 @@
 
 from pyspark import SparkContext
 from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
-import marshal
-import binascii
-'''
-class Rating(namedtuple("Rating", ["user", "product", "rating"])):
-    """Takes a string userID, string productID, and int rating, and returns Rating obj
-    like the Rating obj in pyspark.mllib.recommendation, with userID and productID stored as strings not ints"""
-
-    def __init__(self, user, product, rating):
-        self.user = user
-        self.product = product
-        self.rating = rating
-
-    def __reduce__(self):
-        return Rating, (str(self.user), str(self.product), float(self.rating))
-# Load and parse the data
-'''
 
 sc = SparkContext("local", "Recommendation")
 data_file = sc.textFile("file:///home/hadoop02/ratings-small-hashes.txt")
-ratings = data_file.map(lambda l: l.split(','))\
-   .map(lambda l: Rating(int(l[0]), int(l[1]), float(l[2])))
-
+ratings = data_file.map(lambda l: l.split(',')).map(lambda l: Rating(int(l[0]), int(l[1]), float(l[2])))
 
 # Build the recommendation model using Alternating Least Squares
-rank = 10
-numIterations = 10
+rank = 3
+numIterations = 1
 model = ALS.train(ratings, rank, numIterations)
 
-# I don't think the two following two blocks of code are necessary
-# Evaluate the model on training data
-# testdata = ratings.map(lambda p: (p[0], p[1]))
-# predictions = model.predictAll(testdata).map(lambda r: ((r[0], r[1]), r[2]))
-# ratesAndPreds = ratings.map(lambda r: ((r[0], r[1]), r[2])).join(predictions)
-# MSE = ratesAndPreds.map(lambda r: (r[1][0] - r[1][1])**2).mean()
-# print("Mean Squared Error = " + str(MSE))
-
-# Save and load model
-# model.save(data_file, "target/tmp/myCollaborativeFilter")
-# sameModel = MatrixFactorizationModel.load(data_file, "target/tmp/myCollaborativeFilter")
-
-features_matrix = model.productFeatures().toLocalIterator()
+features_matrix = model.productFeatures()
 features_dict = {}
 
-### put into dictionary for quicker retrieval
+# create dictionary where key is hashed item id, value is feature vector
 for feature_element in features_matrix.toLocalIterator():
+    print("matrix for " + feature_element[0] + " : " + feature_element[1])
     features_dict[feature_element[0]] = feature_element[1]
 
-item_file = open("items.txt").read()
-item_file = item_file.splitlines()
+# create 2 dictionaries
+# 1st dict is key hashed item id, value Amazon item id
+hash_to_amazon = {}
 
-# create list where first element is item id, second is similarity
+# 2nd dict is key amazon id, value hashed id
+amazon_to_hash = {}
+
+id_file = open("id_dict-small.txt").read()
+id_file = id_file.splitlines()
+for line in id_file:
+    ids = line.split(',')
+    hash_to_amazon[ids[0]]=ids[1]
+    amazon_to_hash[ids[1]] = ids[0]
+
+# read in Amazon ids to find most similar items of
+item_file = open("items.txt").read()
+amazon_items = item_file.splitlines()
+
+
+# create empty list where first element is hashed item id, second is similarity
 recommended_products = [(None, 0) * 10]
 lowest_similarity = 0
 
@@ -64,57 +51,28 @@ for line in og_products_file:
     item_id = line[1]
     items_dict[hash] = item_id
 
-for line in item_file:
-    item_ids = line.split(',')
-    item = item_ids[0]
-    original_id = item_ids[1]
+for item in amazon_items:
 
-    if features_dict.get(item) is None:
+    hashed_item = amazon_to_hash[item]
+    ##get the hashed version of this item in items.txt
+
+    current_feature_vector = features_dict.get(hashed_item)
+
+    if current_feature_vector is None:
         continue
-
-    if items_dict.get(item) is None:
-        items_dict[item] = original_id
-
-    current_feature_vector = features_dict.get(item)
+        #if it doesn't exist in our features_dict, it wasn't in the training - continue to next iteration
 
     for feature in features_matrix:
+        if hashed_item != feature[0]:
+            #if we're not looking at the hashed item from items.txt
+            compare_to_vector = feature[1] #get this feature vector
+            dot_product = sum([i * j for (i, j) in zip(current_feature_vector, compare_to_vector)]) #get dot product
+            if dot_product > lowest_similarity:
+                recommended_products.append((feature[0], dot_product))
+                recommended_products = sorted(recommended_products, key=lambda x: x[1]) #sorted by similarity score
+                recommended_products = recommended_products[10:]
 
-        if item != feature[0]:
-
-            compare_to_vector = feature[1]
-
-            # result_array = []
-            # for index in range(len(compare_to_vector)):
-            #    result_array[index] = compare_to_vector[index] * current_feature_vector[index]
-            # sum = 0
-            # for value in result_array:
-            #     sum = sum + value
-
-            current_sum = sum([i * j for (i, j) in zip(current_feature_vector, compare_to_vector)])
-
-            if current_sum > lowest_similarity:
-
-                # first element in tuple is item id, second is similarity
-                recommended_products.append((feature[0], current_sum))
-
-                for element in recommended_products:
-
-                    # isn't this comparing similarity to an item id?
-                    # if element[1] < feature[0]:
-
-                    if element[1] < current_sum:
-                        ##get the lowest value
-                        temp_similarity = element[1]
-
-                    if element[1] == lowest_similarity:
-                        #find my last lowest similarity and remove it
-                        recommended_products.remove(element)
-                        break
-
-                #now reset to the right lowest similarity
-                lowest_similarity = temp_similarity
-
-    for hashed_id in recommended_products:
-        print(items_dict[hashed_id])
+    for hashed_item in recommended_products:
+        print(hash_to_amazon[hashed_item])
 
     recommended_products = [(None, 0) * 10]
