@@ -20,69 +20,48 @@ features_dict = {}
 for feature_element in features_matrix.toLocalIterator():
     features_dict[feature_element[0]] = feature_element[1]
 
-# create dictionary of hashed item id, Amazon item id pairs
-id_dict = {}
+# create 2 dictionaries
+# 1st dict is key hashed item id, value Amazon item id
+hash_to_amazon = {}
+
+# 2nd dict is key amazon id, value hashed id
+amazon_to_hash = {}
+
 id_file = open("id_dict-medium.txt").read()
 id_file = id_file.splitlines()
 for line in id_file:
     ids = line.split(',')
-    id_dict[ids[0]]=ids[1]
+    hash_to_amazon[ids[0]]=ids[1]
+    amazon_to_hash[ids[1]] = ids[0]
 
 # read in Amazon ids to find most similar items of
 item_file = open("items.txt").read()
-item_file = item_file.splitlines()
+amazon_items = item_file.splitlines()
 
 
-# create list where first element is hashed item id, second is similarity
+# create empty list where first element is hashed item id, second is similarity
 recommended_products = [(None, 0) * 10]
 lowest_similarity = 0
 
 
-for line in item_file:
-    item_ids = line.split(',')
+for item in amazon_items:
+    hashed_item = amazon_to_hash[item]
 
-
-    item = item_ids[0]
-    original_id = item_ids[1]
-
-    id_dict[item] = original_id
-
-    if features_dict.get(item) is None:
+    if features_dict.get(hashed_item) is None:
         continue
 
-    current_feature_vector = features_dict.get(item)
+    current_feature_vector = features_dict.get(hashed_item)
 
     for feature in features_matrix:
-
-        if item != feature[0]:
-
+        if hashed_item != feature[0]:
             compare_to_vector = feature[1]
+            dot_product = sum([i * j for (i, j) in zip(current_feature_vector, compare_to_vector)])
+            if dot_product > lowest_similarity:
+                recommended_products.append((feature[0], dot_product))
+                recommended_products = sorted(recommended_products, key=lambda x: x[1])
+                recommended_products = recommended_products[10:]
 
-            current_sum = sum([i * j for (i, j) in zip(current_feature_vector, compare_to_vector)])
-
-            if current_sum > lowest_similarity:
-
-                # first element in tuple is item id, second is similarity
-                recommended_products.append((feature[0], current_sum))
-
-                for element in recommended_products:
-
-                    # isn't this comparing similarity to an item id?
-                    # if element[1] < feature[0]:
-
-                    if element[1] < current_sum:
-                        ##get the lowest value
-                        temp_similarity = element[1]
-
-                    if element[1] == lowest_similarity:
-                        #find my last lowest similarity and remove it
-                        recommended_products.remove(element)
-                        break
-
-                #now reset to the right lowest similarity
-                lowest_similarity = temp_similarity
-
-    for hashed_id in recommended_products:
-        print(items_dict[hashed_id])
+    for hashed_item in recommended_products:
+        print(hash_to_amazon[hashed_item])
 
     recommended_products = [(None, 0) * 10]
