@@ -15,9 +15,12 @@ features_matrix = model.productFeatures()
 features_dict = {}
 
 # create dictionary where key is hashed item id, value is feature vector
-for feature_element in features_matrix.toLocalIterator():
+
+
+for feature_element in features_matrix.collect():
+    print("matrix for " + feature_element[0] + " : " + feature_element[1])
     features_dict[feature_element[0]] = feature_element[1]
-    print("FEATURE VALUE: " + str(features_dict.get(feature_element[0])))
+
 # create 2 dictionaries
 # 1st dict is key hashed item id, value Amazon item id
 hash_to_amazon = {}
@@ -36,10 +39,10 @@ for line in id_file:
 item_file = open("new_items.txt").read()
 amazon_items = item_file.splitlines()
 
-
 # create empty list where first element is hashed item id, second is similarity
 recommended_products = [(None, 0) * 10]
 lowest_similarity = 0
+
 
 # we're assuming that the elements in the features matrix are
 # indexed under a name in the same format as how they're written in the items.txt file
@@ -61,9 +64,9 @@ for item in amazon_items:
         #if it doesn't exist in our features_dict, it wasn't in the training - continue to next iteration
 
     for feature in features_matrix:
+        # if we're not looking at the hashed item from items.txt
         if hashed_item != feature[0]:
-            #if we're not looking at the hashed item from items.txt
-            compare_to_vector = feature[1] #get this feature vector
+            compare_to_vector = feature[1]
             dot_product = sum([i * j for (i, j) in zip(current_feature_vector, compare_to_vector)]) #get dot product
             print(dot_product)
             if dot_product > lowest_similarity:
