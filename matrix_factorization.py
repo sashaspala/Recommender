@@ -26,7 +26,7 @@ hash_to_amazon = {}
 # 2nd dict is key amazon id, value hashed id
 amazon_to_hash = {}
 
-id_file = open("id_dict-small.txt").read()
+id_file = open("id_dict-medium.txt").read()
 id_file = id_file.splitlines()
 for line in id_file:
     ids = line.split(',')
@@ -37,19 +37,9 @@ for line in id_file:
 item_file = open("items.txt").read()
 amazon_items = item_file.splitlines()
 
-
 # create empty list where first element is hashed item id, second is similarity
 recommended_products = [(None, 0) * 10]
 lowest_similarity = 0
-
-# we're assuming that the elements in the features matrix are
-# indexed under a name in the same format as how they're written in the items.txt file
-items_dict = {}
-og_products_file = open("id_dict-small.txt").read().splitlines()
-for line in og_products_file:
-    hash = line[0]
-    item_id = line[1]
-    items_dict[hash] = item_id
 
 for item in amazon_items:
 
@@ -63,9 +53,9 @@ for item in amazon_items:
         #if it doesn't exist in our features_dict, it wasn't in the training - continue to next iteration
 
     for feature in features_matrix:
+        # if we're not looking at the hashed item from items.txt
         if hashed_item != feature[0]:
-            #if we're not looking at the hashed item from items.txt
-            compare_to_vector = feature[1] #get this feature vector
+            compare_to_vector = feature[1]
             dot_product = sum([i * j for (i, j) in zip(current_feature_vector, compare_to_vector)]) #get dot product
             if dot_product > lowest_similarity:
                 recommended_products.append((feature[0], dot_product))
