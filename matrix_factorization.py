@@ -15,7 +15,7 @@ features_matrix = model.productFeatures()
 features_dict = {}
 
 # create dictionary where key is hashed item id, value is feature vector
-for feature_element in features_matrix.toLocalIterator():
+for feature_element in features_matrix.collect():
     print("matrix for " + feature_element[0] + " : " + feature_element[1])
     features_dict[feature_element[0]] = feature_element[1]
 
