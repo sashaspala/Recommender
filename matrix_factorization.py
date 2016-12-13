@@ -3,7 +3,7 @@ from pyspark import SparkContext
 from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
 
 sc = SparkContext("local", "Recommendation")
-data_file = sc.textFile("file:///home/hadoop02/ratings-small-hashes.txt")
+data_file = sc.textFile("file:///home/hadoop02/ratings-medium-hashes.txt")
 ratings = data_file.map(lambda l: l.split(',')).map(lambda l: Rating(int(l[0]), int(l[1]), float(l[2])))
 
 # Build the recommendation model using Alternating Least Squares
@@ -18,7 +18,7 @@ features_dict = {}
 
 
 for feature_element in features_matrix.collect():
-    print("matrix for " + feature_element[0] + " : " + feature_element[1])
+    print("matrix for " + str(feature_element[0]) + " : " + str(feature_element[1]))
     features_dict[feature_element[0]] = feature_element[1]
 
 # create 2 dictionaries
@@ -36,7 +36,7 @@ for line in id_file:
     amazon_to_hash[ids[1]] = ids[0]
 
 # read in Amazon ids to find most similar items of
-item_file = open("new_items.txt").read()
+item_file = open("items-medium.txt").read()
 amazon_items = item_file.splitlines()
 
 # create empty list where first element is hashed item id, second is similarity
